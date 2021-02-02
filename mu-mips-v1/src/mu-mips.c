@@ -307,8 +307,34 @@ void handle_instruction()
 {
 	/*IMPLEMENT THIS*/
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
+	printf("%X\n", mem_read_32(CURRENT_STATE.PC+INSTRUCTION_COUNT));
+	uint32_t* array = translate_instruction(mem_read_32(CURRENT_STATE.PC+INSTRUCTION_COUNT));
+	for(int i=0; i<6;i++)
+		printf("%d\n", array[i]);
+	RUN_FLAG=FALSE;
 }
 
+uint32_t* translate_instruction(uint32_t instruction) {
+	uint32_t* newInstruction = malloc(sizeof(uint32_t)*6);
+	*newInstruction=instruction >> 26;
+	switch(*newInstruction) {
+		case 0x0F:
+			newInstruction[1]=instruction>>21&0x1F;
+			newInstruction[2]=instruction>>16&0x1F;
+			newInstruction[3]=instruction&0xFFFF;
+			break;
+		case 0x00: //not real opcode J-Type template
+			newInstruction[1]=instruction&0x4FFFFFF;
+			break;
+		case 0x01: //not real opcode R-Type template
+			newInstruction[1]=instruction>>21&0x1F;
+			newInstruction[2]=instruction>>16&0x1F;
+			newInstruction[3]=instruction>>11&0x1F;
+			newInstruction[4]=instruction>>6&0x1F;
+			newInstruction[5]=instruction&0x1F;
+	}
+	return newInstruction;
+}
 
 /************************************************************/
 /* Initialize Memory                                                                                                    */ 

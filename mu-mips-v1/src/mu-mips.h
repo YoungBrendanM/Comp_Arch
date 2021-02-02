@@ -63,6 +63,7 @@ char prog_file[32];
 /* Function Declerations.                                                                                                */
 /***************************************************************/
 void help();
+uint32_t* translate_instruction(uint32_t instruction);
 uint32_t mem_read_32(uint32_t address);
 void mem_write_32(uint32_t address, uint32_t value);
 void cycle();
