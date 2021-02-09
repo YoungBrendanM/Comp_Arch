@@ -305,33 +305,179 @@ void load_program() {
 /************************************************************/
 void handle_instruction()
 {
+    printf("%X ", mem_read_32(CURRENT_STATE.PC));
 	/*IMPLEMENT THIS*/
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
-	printf("%X\n", mem_read_32(CURRENT_STATE.PC+INSTRUCTION_COUNT));
-	uint32_t* array = translate_instruction(mem_read_32(CURRENT_STATE.PC+INSTRUCTION_COUNT));
-	for(int i=0; i<6;i++)
-		printf("%d\n", array[i]);
-	RUN_FLAG=FALSE;
+	uint32_t* instruction = translate_instruction(mem_read_32(CURRENT_STATE.PC));
+	switch (*instruction) {
+		case 0x0F: { //Load Upper Immediate
+			printf("LUI\n");
+			NEXT_STATE.REGS[instruction[2]]=instruction[3]<<16;
+			break;
+		}
+		case 0x09: { //Add Immediate Unsigned
+			printf("ADDIU\n");
+			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1]+instruction[3];
+			break;
+		}
+		case 0x2B: { //Store Word
+			printf("SW\n");
+			mem_write_32(CURRENT_STATE.REGS[instruction[1]+instruction[3]], CURRENT_STATE.REGS[instruction[2]]);
+			break;
+		}
+		case 0x23: { // Load Word
+			printf("LW\n");
+			NEXT_STATE.REGS[instruction[2]] = mem_read_32(CURRENT_STATE.REGS[instruction[1]]+instruction[3]);
+			break;
+		}
+		case 0x08: { // Add Immediate
+			printf("ADDI\n");
+			NEXT_STATE.REGS[instruction[2]] = ((int) CURRENT_STATE.REGS[instruction[1]]) + ((int) instruction[3]);
+			break;
+		}
+		case 0x0E: { // Xor Immediate
+			printf("ORI\n");
+			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1] | instruction[3];
+			break;
+		}
+		case 0x0D: { // Xor Immediate
+			printf("XORI\n");
+			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1]^instruction[3];
+			break;
+		}
+		case 0x0C: { // And Immediate
+			printf("ANDI\n");
+			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1] & instruction[3];
+			break;
+		}
+		case 0x02: { // Jump
+			printf("J\n");
+			NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | instruction[1] << 2;
+			break;
+		}
+		case 0x00: {
+			switch (instruction[5]) {
+				case 0x20: { //Add
+					printf("ADD\n");
+					NEXT_STATE.REGS[instruction[3]] = ((int) CURRENT_STATE.REGS[instruction[2]]) + ((int) CURRENT_STATE.REGS[instruction[1]]);
+					break;
+				}
+				case 0x21: { //Add Unsigned
+					printf("ADDU\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] + CURRENT_STATE.REGS[instruction[1]];
+					break;
+				}
+				case 0x25: { //Or
+					printf("OR\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] | CURRENT_STATE.REGS[instruction[1]];
+					break;
+				}
+				case 0x00: { //Shift Left Logical
+					printf("SLL\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] << instruction[4];
+					break;
+				}
+				case 0x23: { //Subtract Unsigned
+					printf("SUBU\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[1]] - CURRENT_STATE.REGS[instruction[2]];
+					break;
+				}
+				case 0x26: { //Exclusive Or
+					printf("XOR\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] ^ CURRENT_STATE.REGS[instruction[1]];
+					break;
+				}
+				case 0x02: { //Shift Right Logical
+					printf("SRL\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] >> instruction[4];
+					break;
+				}
+				case 0x03: { //Shift Right Arithmetic
+					printf("SRA\n");
+					NEXT_STATE.REGS[instruction[3]] = (CURRENT_STATE.REGS[instruction[2]] >> instruction[4]) & 0x80000000;
+					break;
+				}
+				case 0x24: { //And
+					printf("AND\n");
+					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] & CURRENT_STATE.REGS[instruction[1]];
+					break;
+				}
+				case 0x22: { //Subtract
+					printf("SUB\n");
+					NEXT_STATE.REGS[instruction[3]] = ((int) CURRENT_STATE.REGS[instruction[1]]) - ((int) CURRENT_STATE.REGS[instruction[2]]);
+					break;
+				}
+				case 0x18: { //Multiply
+					printf("MULT\n");
+					long result = ((int) CURRENT_STATE.REGS[instruction[1]])*((int) CURRENT_STATE.REGS[instruction[2]]);
+					NEXT_STATE.HI = result>>32;
+					NEXT_STATE.LO = result & 0xFFFFFFFF;
+					break;
+				}
+				case 0x19: { //Multiply Unsigned
+					printf("MULTU\n");
+					uint64_t result = CURRENT_STATE.REGS[instruction[1]]*CURRENT_STATE.REGS[instruction[2]];
+					NEXT_STATE.HI = result>>32;
+					NEXT_STATE.LO = result & 0xFFFFFFFF;
+					break;
+				}
+				case 0x1A: { //Divide
+					printf("DIV\n");
+					NEXT_STATE.LO = ((int) CURRENT_STATE.REGS[instruction[1]])/((int) CURRENT_STATE.REGS[instruction[2]]);
+					NEXT_STATE.HI = ((int) CURRENT_STATE.REGS[instruction[1]])%((int) CURRENT_STATE.REGS[instruction[2]]);
+					break;
+				}
+				case 0x1B: { //Divide Unsigned
+					printf("DIVU\n");
+					NEXT_STATE.LO = (CURRENT_STATE.REGS[instruction[1]])/(CURRENT_STATE.REGS[instruction[2]]);
+					NEXT_STATE.HI = (CURRENT_STATE.REGS[instruction[1]])%(CURRENT_STATE.REGS[instruction[2]]);
+					break;
+				}
+				case 0x27: { //Nor
+					printf("NOR\n");
+					NEXT_STATE.REGS[instruction[3]] = ~(CURRENT_STATE.REGS[instruction[2]] | CURRENT_STATE.REGS[instruction[1]]);
+					break;
+				}
+				default: {	
+					for(int i=0; i<6;i++) {
+						printf("0x%X\n", instruction[i]);
+					}
+					RUN_FLAG=FALSE;
+				}
+			}
+			break;
+		}
+		default: {	
+			for(int i=0; i<6;i++) {
+				printf("0x%X\n", instruction[i]);
+			}
+			RUN_FLAG=FALSE;
+		}
+	}
+	NEXT_STATE.PC+=4;
 }
 
 uint32_t* translate_instruction(uint32_t instruction) {
 	uint32_t* newInstruction = malloc(sizeof(uint32_t)*6);
 	*newInstruction=instruction >> 26;
 	switch(*newInstruction) {
-		case 0x0F:
+		case 0x0F: case 0x09: case 0x2B: case 0x23: case 0x08:
 			newInstruction[1]=instruction>>21&0x1F;
 			newInstruction[2]=instruction>>16&0x1F;
 			newInstruction[3]=instruction&0xFFFF;
 			break;
-		case 0x00: //not real opcode J-Type template
+		case 0x02: //not real opcode J-Type template
 			newInstruction[1]=instruction&0x4FFFFFF;
 			break;
-		case 0x01: //not real opcode R-Type template
-			newInstruction[1]=instruction>>21&0x1F;
+		case 0x00: //not real opcode R-Type template
+			newInstruction[1]=instruction>>21&0x2F;
 			newInstruction[2]=instruction>>16&0x1F;
 			newInstruction[3]=instruction>>11&0x1F;
 			newInstruction[4]=instruction>>6&0x1F;
-			newInstruction[5]=instruction&0x1F;
+			newInstruction[5]=instruction>>0&0x2F;
+			break;
+		default:
+			newInstruction[5]=0xFF;
 	}
 	return newInstruction;
 }
