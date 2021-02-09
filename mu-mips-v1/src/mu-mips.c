@@ -355,7 +355,7 @@ void handle_instruction()
 			NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | instruction[1] << 2;
 			break;
 		}
-		case 0x00: {
+		case 0x00: { //function bits
 			switch (instruction[5]) {
 				case 0x20: { //Add
 					printf("ADD\n");
@@ -511,7 +511,186 @@ void print_program(){
 /************************************************************/
 void print_instruction(uint32_t addr){
 	/*IMPLEMENT THIS*/
+	//printf("%08x\n", addr); //for debugging
+	uint32_t instruction = (mem_read_32(addr));
+	unsigned mask = createMask(26,31); //last six bits mask, opcode
+	//printf("%08x\n", instruction);
+	unsigned opcode = mask & instruction;
+	//printf("%x\n", first_six);
+	switch(opcode)
+	{
+		case 0x08: //unsigned add ADDI
+		{
+			printf("ADDI ");
+			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
+			unsigned imm_mask = createMask(0,15);
+			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
+			unsigned immediate = applyMask(imm_mask, instruction);
+			printf("%x, %x, %x\n", rs, rt, immediate); 
+			
+		}	
+		case 0x09: //ADDIU
+		{
+			printf("ADDIU ");
+			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
+			unsigned imm_mask = createMask(0,15);
+			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
+			unsigned immediate = applyMask(imm_mask, instruction);
+			printf("%x, %x, %x\n", rs, rt, immediate); 
+		}	
+		case 0x0C: //ANDI
+		{
+			printf("ANDI ");
+			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
+			unsigned imm_mask = createMask(0,15);
+			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
+			unsigned immediate = applyMask(imm_mask, instruction);
+			printf("%x, %x, %x\n", rs, rt, immediate); 
+		}
+		case 0x0D: //ORI
+		{
+			printf("ORI ");
+			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
+			unsigned imm_mask = createMask(0,15);
+			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
+			unsigned immediate = applyMask(imm_mask, instruction);
+			printf("%x, %x, %x\n", rs, rt, immediate); 
+		}
+		case 0x00: //special case when first six bits are 000000
+		{
+			unsigned func_mask = createMask(0,5);
+			unsigned func = applyMask(func_mask, instruction);
+			switch(func)
+			{
+				case 0x20: //ADD
+				{
+					printf("ADD ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+				case 0x21: //ADDU
+				{
+					printf("ADDU ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+				case 0x22: //SUB
+				{
+					printf("SUB ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+				case 0x23: //SUBU
+				{
+					printf("SUBU ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+				case 0x18: //MULT
+				{
+					printf("MULT ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					printf("%x, %x\n", rs, rt); 
+				}
+				case 0x19: //MULTU
+				{
+					printf("MULTU ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					printf("%x, %x\n", rs, rt); 
+				}
+				case 0x1A: //DIV
+				{
+					printf("DIV ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					printf("%x, %x\n", rs, rt); 
+				}
+				case 0x1B: //DIVU
+				{
+					printf("DIVU ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					printf("%x, %x\n", rs, rt); 	
+				}
+				case 0x24: //AND
+				{
+					printf("AND ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+				case 0x25:
+				{
+					printf("OR ");
+					unsigned rs_mask = createMask(21,25);
+					unsigned rt_mask = createMask(16,20);
+					unsigned rd_mask = createMask(11,15);
+					unsigned rs = applyMask(rs_mask, instruction);
+					unsigned rt = applyMask(rt_mask, instruction);
+					unsigned rd = applyMask(rd_mask, instruction);
+					printf("%x, %x, %x\n", rd, rs, rt);
+				}
+			}
+		}
+			
+	}	
+	
+}
 
+unsigned createMask(unsigned a, unsigned b)
+{
+   unsigned r = 0;
+   for (unsigned i=a; i<=b; i++)
+       r |= 1 << i;
+
+   return r;
+}
+
+unsigned applyMask(unsigned mask, uint32_t instruction)
+{
+	return mask & instruction;
 }
 
 /***************************************************************/

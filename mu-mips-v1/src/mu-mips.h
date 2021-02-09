@@ -74,6 +74,8 @@ void rdump();
 void handle_command();
 void reset();
 void init_memory();
+unsigned createMask(unsigned a, unsigned b);
+unsigned applyMask(unsigned mask, uint32_t instruction);
 void load_program();
 void handle_instruction(); /*IMPLEMENT THIS*/
 void initialize();
