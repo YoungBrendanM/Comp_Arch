@@ -81,4 +81,4 @@ void handle_instruction(); /*IMPLEMENT THIS*/
 void initialize();
 void print_program(); /*IMPLEMENT THIS*/
 void print_instruction(uint32_t);
-
+unsigned returnReg(unsigned rt)

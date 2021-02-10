@@ -515,7 +515,7 @@ void print_instruction(uint32_t addr){
 	uint32_t instruction = (mem_read_32(addr));
 	unsigned opcode_mask = createMask(26,31); //last six bits mask, opcode
 	unsigned opcode = applyMask(opcode_mask, instruction);
-	printf("Opcode: %02x     ", opcode);
+	//printf("Opcode: %02x     ", opcode);
 	switch(opcode)
 	{
 		case 0x08000000: //unsigned add ADDI
@@ -527,10 +527,10 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate); 
+			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}	
-		case 0x09000000: //ADDIU
+		case 0x24000000: //ADDIU
 		{
 			printf("ADDIU ");
 			unsigned rs_mask = createMask(21,25);
@@ -539,7 +539,7 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate); 
+			printf("$%x $%x 0x%04x\n", rs, rt, immediate); 
 			break;
 		}	
 		case 0x0C000000: //ANDI
@@ -551,10 +551,10 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate); 
+			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}
-		case 0x0D000000: //ORI
+		case 0x34000000: //ORI
 		{
 			printf("ORI ");
 			unsigned rs_mask = createMask(21,25);
@@ -563,7 +563,7 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate); 
+			printf("$%x $%x, 0x%04x\n", rs, rt, immediate); 
 			break;
 		}
 		case 0x0E000000: //XORI
@@ -575,7 +575,7 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate);
+			printf("$%x $%x 0x%x\n", rs, rt, immediate);
 			break; 
 		}
 		case 0x0A000000: //STLI set on less than immediate
@@ -587,10 +587,10 @@ void print_instruction(uint32_t addr){
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned immediate = applyMask(imm_mask, instruction);
-			printf("%x, %x, %x\n", rs, rt, immediate); 
+			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}
-		case 0x23000000: //Load Word - for now on is load/store instructions mostly
+		case 0x8C000000: //Load Word - for now on is load/store instructions mostly
 		{
 			printf("LW ");
 			unsigned base_mask = createMask(21,25);
@@ -599,7 +599,7 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
 		case 0x20000000: //Load Byte LB
@@ -611,7 +611,7 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x, 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
 		case 0x21000000: //Load halfword
@@ -623,22 +623,20 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
-		case 0x0F000000: //LUI Load Upper Immediate
+		case 0x3C000000: //LUI Load Upper Immediate, was 0F
 		{
 			printf("LUI ");
-			unsigned base_mask = createMask(21,25);
 			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
+			unsigned immediate_mask = createMask(0,15);
 			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			unsigned immediate = applyMask(immediate_mask, instruction);
+			printf("$%x 0x%x\n", rt, immediate); 
 			break;
 		}
-		case 0x2B000000: //SW Store Word
+		case 0xAC000000: //SW Store Word
 		{
 			printf("SW ");
 			unsigned base_mask = createMask(21,25);
@@ -647,10 +645,10 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
-		case 0x28000000: //SB Store Byte
+		case 0x28000000: //SB Store Byte CHECK FORMAT
 		{
 			printf("SB ");
 			unsigned base_mask = createMask(21,25);
@@ -659,10 +657,10 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
-		case 0x29000000: //SH Store Halfword
+		case 0x29000000: //SH Store Halfword CHECK FORMAT
 		{
 			printf("SH ");
 			unsigned base_mask = createMask(21,25);
@@ -671,27 +669,31 @@ void print_instruction(uint32_t addr){
 			unsigned base = applyMask(base_mask, instruction);
 			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x(%x)\n", rt, offset, base); 
+			printf("$%x 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
-		case 0x04000000: //BEQ Branch if equal - start of branching instructions
+		case 0x10000000: //BEQ Branch if equal - start of branching instructions
 		{
 			printf("BEQ ");
 			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
 			unsigned offset_mask = createMask(0,15);
 			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x\n", rs, offset); 
+			printf("$%x $%x 0x%04x\n", rs, rt, offset); 
 			break;
 		}
-		case 0x05000000: //BNE Branch on Not Equal
+		case 0x14000000: //BNE Branch on Not Equal
 		{
 			printf("BNE ");
 			unsigned rs_mask = createMask(21,25);
+			unsigned rt_mask = createMask(16,20);
 			unsigned offset_mask = createMask(0,15);
 			unsigned rs = applyMask(rs_mask, instruction);
+			unsigned rt = applyMask(rt_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x\n", rs, offset); 
+			printf("$%x $%x 0x%04x\n", rs, rt, offset); 
 			break;
 		}
 		case 0x06000000: //BLEZ Brnach on Less than or equal to zero 
@@ -701,7 +703,7 @@ void print_instruction(uint32_t addr){
 			unsigned offset_mask = createMask(0,15);
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x\n", rs, offset); 
+			printf("$%x 0x%x\n", rs, offset); 
 			break;
 		}
 		case 0x01000000: //special branch cases
@@ -718,7 +720,7 @@ void print_instruction(uint32_t addr){
 					unsigned offset_mask = createMask(0,15);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned offset = applyMask(offset_mask, instruction);
-					printf("%x, %x\n", rs, offset); 
+					printf("#%x 0x%x\n", rs, offset); 
 					break;
 				}
 				case 0x01: // BGEZ Branch on greater than or equal zero
@@ -728,7 +730,7 @@ void print_instruction(uint32_t addr){
 					unsigned offset_mask = createMask(0,15);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned offset = applyMask(offset_mask, instruction);
-					printf("%x, %x\n", rs, offset); 
+					printf("$%x 0x%x\n", rs, offset); 
 					break;
 				}
 			}
@@ -742,15 +744,15 @@ void print_instruction(uint32_t addr){
 			unsigned offset_mask = createMask(0,15);
 			unsigned rs = applyMask(rs_mask, instruction);
 			unsigned offset = applyMask(offset_mask, instruction);
-			printf("%x, %x\n", rs, offset); 
+			printf("$%x 0x%x\n", rs, offset); 
 			break;
 		}
-		case 0x02000000: //Jump J (bum bum bummmm bum)
+		case 0x02000000: //Jump J (bum bum bummmm bum, RIP Eddie VanHalen)
 		{
 			printf("J ");
 			unsigned target_mask = createMask(0,26);
 			unsigned target = applyMask(target_mask, instruction);
-			printf("%x\n", target);
+			printf("$%x\n", target);
 			break;
 		}
 		case 0x03000000: //JAL Jump and Link
@@ -758,7 +760,7 @@ void print_instruction(uint32_t addr){
 			printf("JAL ");
 			unsigned target_mask = createMask(0,26);
 			unsigned target = applyMask(target_mask, instruction);
-			printf("%x\n", target);
+			printf("$%x\n", target);
 			break;
 		}
 		case 0x00000000: //special case when first six bits are 000000, function operations
@@ -776,7 +778,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x21: //ADDU
@@ -788,7 +790,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x22: //SUB
@@ -800,7 +802,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x23: //SUBU
@@ -812,7 +814,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x18: //MULT
@@ -822,7 +824,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt_mask = createMask(16,20);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
-					printf("%x, %x\n", rs, rt); 
+					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x19: //MULTU
@@ -832,7 +834,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt_mask = createMask(16,20);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
-					printf("%x, %x\n", rs, rt); 
+					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x1A: //DIV
@@ -842,7 +844,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt_mask = createMask(16,20);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
-					printf("%x, %x\n", rs, rt); 
+					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x1B: //DIVU
@@ -852,7 +854,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt_mask = createMask(16,20);
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
-					printf("%x, %x\n", rs, rt); 
+					printf("$%x $%x\n", rs, rt); 
 					break;	
 				}
 				case 0x24: //AND
@@ -864,7 +866,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x25: //OR
@@ -876,7 +878,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x26: //XOR
@@ -888,7 +890,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x27: //NOR
@@ -900,7 +902,7 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x2A: //SLT Set on less than
@@ -912,10 +914,10 @@ void print_instruction(uint32_t addr){
 					unsigned rs = applyMask(rs_mask, instruction);
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x, %x, %x\n", rd, rs, rt);
+					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
-				case 0x00: //SLL Shift Left Logical
+				case 0x00: //SLL Shift Left Logical NEED TO CHECK FORMAT
 				{
 					printf("SLL ");
 					unsigned rt_mask = createMask(16,20);
@@ -924,10 +926,10 @@ void print_instruction(uint32_t addr){
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
 					unsigned sa = applyMask(sa_mask, instruction);
-					printf("%x, %x, %x\n", rd, rt, sa); //different from the rest with the sa thingy
+					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				}
-				case 0x02: //SRL Shift Right Logical
+				case 0x02: //SRL Shift Right Logical CHECK FORMAT
 				{
 					printf("SRL ");
 					unsigned rt_mask = createMask(16,20);
@@ -936,7 +938,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
 					unsigned sa = applyMask(sa_mask, instruction);
-					printf("%x, %x, %x\n", rd, rt, sa); //different from the rest with the sa thingy
+					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				}
 				case 0x03: //SRA Shift Right Arithmetic
@@ -948,7 +950,7 @@ void print_instruction(uint32_t addr){
 					unsigned rt = applyMask(rt_mask, instruction);
 					unsigned rd = applyMask(rd_mask, instruction);
 					unsigned sa = applyMask(sa_mask, instruction);
-					printf("%x, %x, %x\n", rd, rt, sa); //different from the rest with the sa thingy
+					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				} 
 				case 0x10: //MFHI Move from HI
@@ -956,7 +958,7 @@ void print_instruction(uint32_t addr){
 					printf("MFHI ");
 					unsigned rd_mask = createMask(11,15);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x\n", rd); //only the rd register
+					printf("$%x\n", rd); //only the rd register
 					break;
 				}
 				case 0x12: //MFLO Move from LO
@@ -964,7 +966,7 @@ void print_instruction(uint32_t addr){
 					printf("MFHI ");
 					unsigned rd_mask = createMask(11,15);
 					unsigned rd = applyMask(rd_mask, instruction);
-					printf("%x\n", rd); //only the rd register
+					printf("$%x\n", rd); //only the rd register
 					break;
 				}
 				case 0x11: //MTHI Move to HI
@@ -972,7 +974,7 @@ void print_instruction(uint32_t addr){
 					printf("MFHI ");
 					unsigned rs_mask = createMask(21,25);
 					unsigned rs = applyMask(rs_mask, instruction);
-					printf("%x\n", rs); //only the rs register
+					printf("$%x\n", rs); //only the rs register
 					break;
 				}
 				case 0x13: //MTLO Move to LO
@@ -980,7 +982,7 @@ void print_instruction(uint32_t addr){
 					printf("MFHI ");
 					unsigned rs_mask = createMask(21,25);
 					unsigned rs = applyMask(rs_mask, instruction);
-					printf("%x\n", rs); //only the rs register
+					printf("$%x\n", rs); //only the rs register
 					break;
 				}
 				case 0x08: //JR Jump Register
@@ -991,7 +993,7 @@ void print_instruction(uint32_t addr){
 					printf("%x\n", rs); //only the rs register
 					break;
 				}
-				case 0x09: //JALR Jump and Link Register
+				case 0x09: //JALR Jump and Link Register CHECK FORMAT
 				{
 					printf("JR ");
 					unsigned rs_mask = createMask(21,25);
@@ -1000,10 +1002,10 @@ void print_instruction(uint32_t addr){
 					unsigned rd = applyMask(rd_mask, instruction);
 					if(rd == 0x1F) //if rd is all one's then not given
 					{
-						printf("%x\n", rs);
+						printf("$%x\n", rs);
 					}
 					else //rd is given
-						printf("%x, %x\n", rd, rs);
+						printf("$%x $%x\n", rd, rs);
 					break;
 				}
 				case 0x0C: //SYSCALL
