@@ -308,153 +308,295 @@ void handle_instruction()
     printf("%X ", mem_read_32(CURRENT_STATE.PC));
 	/*IMPLEMENT THIS*/
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
-	uint32_t* instruction = translate_instruction(mem_read_32(CURRENT_STATE.PC));
-	switch (*instruction) {
-		case 0x0F: { //Load Upper Immediate
-			printf("LUI\n");
-			NEXT_STATE.REGS[instruction[2]]=instruction[3]<<16;
-			break;
-		}
-		case 0x09: { //Add Immediate Unsigned
-			printf("ADDIU\n");
-			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1]+instruction[3];
-			break;
-		}
-		case 0x2B: { //Store Word
-			printf("SW\n");
-			mem_write_32(CURRENT_STATE.REGS[instruction[1]+instruction[3]], CURRENT_STATE.REGS[instruction[2]]);
-			break;
-		}
-		case 0x23: { // Load Word
-			printf("LW\n");
-			NEXT_STATE.REGS[instruction[2]] = mem_read_32(CURRENT_STATE.REGS[instruction[1]]+instruction[3]);
-			break;
-		}
-		case 0x08: { // Add Immediate
-			printf("ADDI\n");
-			NEXT_STATE.REGS[instruction[2]] = ((int) CURRENT_STATE.REGS[instruction[1]]) + ((int) instruction[3]);
-			break;
-		}
-		case 0x0E: { // Xor Immediate
-			printf("ORI\n");
-			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1] | instruction[3];
-			break;
-		}
-		case 0x0D: { // Xor Immediate
-			printf("XORI\n");
-			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1]^instruction[3];
-			break;
-		}
-		case 0x0C: { // And Immediate
-			printf("ANDI\n");
-			NEXT_STATE.REGS[instruction[2]]=CURRENT_STATE.REGS[1] & instruction[3];
-			break;
-		}
-		case 0x02: { // Jump
-			printf("J\n");
-			NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | instruction[1] << 2;
-			break;
-		}
-		case 0x00: { //function bits
-			switch (instruction[5]) {
-				case 0x20: { //Add
-					printf("ADD\n");
-					NEXT_STATE.REGS[instruction[3]] = ((int) CURRENT_STATE.REGS[instruction[2]]) + ((int) CURRENT_STATE.REGS[instruction[1]]);
-					break;
+	uint32_t instruction, opcode, function, rs, rt, rd, sa, immediate, target;
+	uint64_t product, p1, p2;
+	
+	uint32_t addr, data;
+	
+	int branch_jump = FALSE;
+	
+	printf("[0x%x]\t", CURRENT_STATE.PC);
+	
+	instruction = mem_read_32(CURRENT_STATE.PC);
+	
+	opcode = (instruction & 0xFC000000) >> 26;
+	function = instruction & 0x0000003F;
+	rs = (instruction & 0x03E00000) >> 21;
+	rt = (instruction & 0x001F0000) >> 16;
+	rd = (instruction & 0x0000F800) >> 11;
+	sa = (instruction & 0x000007C0) >> 6;
+	immediate = instruction & 0x0000FFFF;
+	target = instruction & 0x03FFFFFF;
+	
+	if(opcode == 0x00){
+		switch(function){
+			case 0x00: //SLL
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] << sa;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x02: //SRL
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] >> sa;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x03: //SRA 
+				if ((CURRENT_STATE.REGS[rt] & 0x80000000) == 1)
+				{
+					NEXT_STATE.REGS[rd] =  ~(~CURRENT_STATE.REGS[rt] >> sa );
 				}
-				case 0x21: { //Add Unsigned
-					printf("ADDU\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] + CURRENT_STATE.REGS[instruction[1]];
-					break;
+				else{
+					NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] >> sa;
 				}
-				case 0x25: { //Or
-					printf("OR\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] | CURRENT_STATE.REGS[instruction[1]];
-					break;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x08: //JR
+				NEXT_STATE.PC = CURRENT_STATE.REGS[rs];
+				branch_jump = TRUE;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x09: //JALR
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.PC + 4;
+				NEXT_STATE.PC = CURRENT_STATE.REGS[rs];
+				branch_jump = TRUE;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0C: //SYSCALL
+				if(CURRENT_STATE.REGS[2] == 0xa){
+					RUN_FLAG = FALSE;
+					print_instruction(CURRENT_STATE.PC);
 				}
-				case 0x00: { //Shift Left Logical
-					printf("SLL\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] << instruction[4];
-					break;
+				break;
+			case 0x10: //MFHI
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.HI;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x11: //MTHI
+				NEXT_STATE.HI = CURRENT_STATE.REGS[rs];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x12: //MFLO
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.LO;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x13: //MTLO
+				NEXT_STATE.LO = CURRENT_STATE.REGS[rs];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x18: //MULT
+				if ((CURRENT_STATE.REGS[rs] & 0x80000000) == 0x80000000){
+					p1 = 0xFFFFFFFF00000000 | CURRENT_STATE.REGS[rs];
+				}else{
+					p1 = 0x00000000FFFFFFFF & CURRENT_STATE.REGS[rs];
 				}
-				case 0x23: { //Subtract Unsigned
-					printf("SUBU\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[1]] - CURRENT_STATE.REGS[instruction[2]];
-					break;
+				if ((CURRENT_STATE.REGS[rt] & 0x80000000) == 0x80000000){
+					p2 = 0xFFFFFFFF00000000 | CURRENT_STATE.REGS[rt];
+				}else{
+					p2 = 0x00000000FFFFFFFF & CURRENT_STATE.REGS[rt];
 				}
-				case 0x26: { //Exclusive Or
-					printf("XOR\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] ^ CURRENT_STATE.REGS[instruction[1]];
-					break;
+				product = p1 * p2;
+				NEXT_STATE.LO = (product & 0X00000000FFFFFFFF);
+				NEXT_STATE.HI = (product & 0XFFFFFFFF00000000)>>32;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x19: //MULTU
+				product = (uint64_t)CURRENT_STATE.REGS[rs] * (uint64_t)CURRENT_STATE.REGS[rt];
+				NEXT_STATE.LO = (product & 0X00000000FFFFFFFF);
+				NEXT_STATE.HI = (product & 0XFFFFFFFF00000000)>>32;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x1A: //DIV 
+				if(CURRENT_STATE.REGS[rt] != 0)
+				{
+					NEXT_STATE.LO = (int32_t)CURRENT_STATE.REGS[rs] / (int32_t)CURRENT_STATE.REGS[rt];
+					NEXT_STATE.HI = (int32_t)CURRENT_STATE.REGS[rs] % (int32_t)CURRENT_STATE.REGS[rt];
 				}
-				case 0x02: { //Shift Right Logical
-					printf("SRL\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] >> instruction[4];
-					break;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x1B: //DIVU
+				if(CURRENT_STATE.REGS[rt] != 0)
+				{
+					NEXT_STATE.LO = CURRENT_STATE.REGS[rs] / CURRENT_STATE.REGS[rt];
+					NEXT_STATE.HI = CURRENT_STATE.REGS[rs] % CURRENT_STATE.REGS[rt];
 				}
-				case 0x03: { //Shift Right Arithmetic
-					printf("SRA\n");
-					NEXT_STATE.REGS[instruction[3]] = (CURRENT_STATE.REGS[instruction[2]] >> instruction[4]) & 0x80000000;
-					break;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x20: //ADD
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] + CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x21: //ADDU 
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] + CURRENT_STATE.REGS[rs];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x22: //SUB
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] - CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x23: //SUBU
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] - CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x24: //AND
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] & CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x25: //OR
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] | CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x26: //XOR
+				NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] ^ CURRENT_STATE.REGS[rt];
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x27: //NOR
+				NEXT_STATE.REGS[rd] = ~(CURRENT_STATE.REGS[rs] | CURRENT_STATE.REGS[rt]);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x2A: //SLT
+				if(CURRENT_STATE.REGS[rs] < CURRENT_STATE.REGS[rt]){
+					NEXT_STATE.REGS[rd] = 0x1;
 				}
-				case 0x24: { //And
-					printf("AND\n");
-					NEXT_STATE.REGS[instruction[3]] = CURRENT_STATE.REGS[instruction[2]] & CURRENT_STATE.REGS[instruction[1]];
-					break;
+				else{
+					NEXT_STATE.REGS[rd] = 0x0;
 				}
-				case 0x22: { //Subtract
-					printf("SUB\n");
-					NEXT_STATE.REGS[instruction[3]] = ((int) CURRENT_STATE.REGS[instruction[1]]) - ((int) CURRENT_STATE.REGS[instruction[2]]);
-					break;
-				}
-				case 0x18: { //Multiply
-					printf("MULT\n");
-					long result = ((int) CURRENT_STATE.REGS[instruction[1]])*((int) CURRENT_STATE.REGS[instruction[2]]);
-					NEXT_STATE.HI = result>>32;
-					NEXT_STATE.LO = result & 0xFFFFFFFF;
-					break;
-				}
-				case 0x19: { //Multiply Unsigned
-					printf("MULTU\n");
-					uint64_t result = CURRENT_STATE.REGS[instruction[1]]*CURRENT_STATE.REGS[instruction[2]];
-					NEXT_STATE.HI = result>>32;
-					NEXT_STATE.LO = result & 0xFFFFFFFF;
-					break;
-				}
-				case 0x1A: { //Divide
-					printf("DIV\n");
-					NEXT_STATE.LO = ((int) CURRENT_STATE.REGS[instruction[1]])/((int) CURRENT_STATE.REGS[instruction[2]]);
-					NEXT_STATE.HI = ((int) CURRENT_STATE.REGS[instruction[1]])%((int) CURRENT_STATE.REGS[instruction[2]]);
-					break;
-				}
-				case 0x1B: { //Divide Unsigned
-					printf("DIVU\n");
-					NEXT_STATE.LO = (CURRENT_STATE.REGS[instruction[1]])/(CURRENT_STATE.REGS[instruction[2]]);
-					NEXT_STATE.HI = (CURRENT_STATE.REGS[instruction[1]])%(CURRENT_STATE.REGS[instruction[2]]);
-					break;
-				}
-				case 0x27: { //Nor
-					printf("NOR\n");
-					NEXT_STATE.REGS[instruction[3]] = ~(CURRENT_STATE.REGS[instruction[2]] | CURRENT_STATE.REGS[instruction[1]]);
-					break;
-				}
-				default: {	
-					for(int i=0; i<6;i++) {
-						printf("0x%X\n", instruction[i]);
-					}
-					RUN_FLAG=FALSE;
-				}
-			}
-			break;
-		}
-		default: {	
-			for(int i=0; i<6;i++) {
-				printf("0x%X\n", instruction[i]);
-			}
-			RUN_FLAG=FALSE;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			default:
+				printf("Instruction at 0x%x is not implemented!\n", CURRENT_STATE.PC);
+				break;
 		}
 	}
-	NEXT_STATE.PC+=4;
+	else{
+		switch(opcode){
+			case 0x01:
+				if(rt == 0x00000){ //BLTZ
+					if((CURRENT_STATE.REGS[rs] & 0x80000000) > 0){
+						NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+						branch_jump = TRUE;
+					}
+					print_instruction(CURRENT_STATE.PC);
+				}
+				else if(rt == 0x00001){ //BGEZ
+					if((CURRENT_STATE.REGS[rs] & 0x80000000) == 0x0){
+						NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+						branch_jump = TRUE;
+					}
+					print_instruction(CURRENT_STATE.PC);
+				}
+				break;
+			case 0x02: //J
+				NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | (target << 2);
+				branch_jump = TRUE;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x03: //JAL
+				NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | (target << 2);
+				NEXT_STATE.REGS[31] = CURRENT_STATE.PC + 4;
+				branch_jump = TRUE;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x04: //BEQ
+				if(CURRENT_STATE.REGS[rs] == CURRENT_STATE.REGS[rt]){
+					NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+					branch_jump = TRUE;
+				}
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x05: //BNE
+				if(CURRENT_STATE.REGS[rs] != CURRENT_STATE.REGS[rt]){
+					NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+					branch_jump = TRUE;
+				}
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x06: //BLEZ
+				if((CURRENT_STATE.REGS[rs] & 0x80000000) > 0 || CURRENT_STATE.REGS[rs] == 0){
+					NEXT_STATE.PC = CURRENT_STATE.PC +  ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+					branch_jump = TRUE;
+				}
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x07: //BGTZ
+				if((CURRENT_STATE.REGS[rs] & 0x80000000) == 0x0 || CURRENT_STATE.REGS[rs] != 0){
+					NEXT_STATE.PC = CURRENT_STATE.PC +  ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
+					branch_jump = TRUE;
+				}
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x08: //ADDI
+				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x09: //ADDIU
+				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0A: //SLTI
+				if ( (  (int32_t)CURRENT_STATE.REGS[rs] - (int32_t)( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF))) < 0){
+					NEXT_STATE.REGS[rt] = 0x1;
+				}else{
+					NEXT_STATE.REGS[rt] = 0x0;
+				}
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0C: //ANDI
+				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] & (immediate & 0x0000FFFF);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0D: //ORI
+				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] | (immediate & 0x0000FFFF);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0E: //XORI
+				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] ^ (immediate & 0x0000FFFF);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x0F: //LUI
+				NEXT_STATE.REGS[rt] = immediate << 16;
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x20: //LB
+				data = mem_read_32( CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF)) );
+				NEXT_STATE.REGS[rt] = ((data & 0x000000FF) & 0x80) > 0 ? (data | 0xFFFFFF00) : (data & 0x000000FF);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x21: //LH
+				data = mem_read_32( CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF)) );
+				NEXT_STATE.REGS[rt] = ((data & 0x0000FFFF) & 0x8000) > 0 ? (data | 0xFFFF0000) : (data & 0x0000FFFF);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x23: //LW
+				NEXT_STATE.REGS[rt] = mem_read_32( CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF)) );
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x28: //SB
+				addr = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
+				data = mem_read_32( addr);
+				data = (data & 0xFFFFFF00) | (CURRENT_STATE.REGS[rt] & 0x000000FF);
+				mem_write_32(addr, data);
+				print_instruction(CURRENT_STATE.PC);				
+				break;
+			case 0x29: //SH
+				addr = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
+				data = mem_read_32( addr);
+				data = (data & 0xFFFF0000) | (CURRENT_STATE.REGS[rt] & 0x0000FFFF);
+				mem_write_32(addr, data);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			case 0x2B: //SW
+				addr = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
+				mem_write_32(addr, CURRENT_STATE.REGS[rt]);
+				print_instruction(CURRENT_STATE.PC);
+				break;
+			default:
+				// put more things here
+				printf("Instruction at 0x%x is not implemented!\n", CURRENT_STATE.PC);
+				break;
+		}
+	}
+	
+	if(!branch_jump){
+		NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+	}
 }
 
 uint32_t* translate_instruction(uint32_t instruction) {
@@ -511,225 +653,149 @@ void print_program(){
 /************************************************************/
 void print_instruction(uint32_t addr){
 	/*IMPLEMENT THIS*/
-	//printf("%08x\n", addr); //for debugging
-	uint32_t instruction = (mem_read_32(addr));
+	//printf("%x
+	uint32_t instruction = (mem_read_32(addr)); //reading in address from mem
+	//printf("address = 0x%x\n", instruction);
+	
+	//creating bit massk
 	unsigned opcode_mask = createMask(26,31); //last six bits mask, opcode
 	unsigned opcode = applyMask(opcode_mask, instruction);
-	//printf("Opcode: %02x     ", opcode);
+	//printf("opcode = 0x%x\n", opcode);
+	unsigned rs_mask = createMask(21,25);
+	unsigned rt_mask = createMask(16,20);
+	unsigned imm_mask = createMask(0,15);	
+	unsigned base_mask = createMask(21,25);
+	unsigned offset_mask = createMask(0,15);
+	unsigned target_mask = createMask(0,26);	
+	unsigned sa_mask = createMask(6,10);
+	unsigned branch_mask = createMask(16,20);	
+	unsigned func_mask = createMask(0,5);
+	unsigned rd_mask = createMask(11,15);
+	
+
+	//applying masks to get parts of command
+	unsigned rs = applyMask(rs_mask, instruction);
+	unsigned rt = applyMask(rt_mask, instruction);
+	unsigned immediate = applyMask(imm_mask, instruction);
+	unsigned base = applyMask(base_mask, instruction);
+	unsigned offset = applyMask(offset_mask, instruction);
+	unsigned target = applyMask(target_mask, instruction);
+	unsigned sa = applyMask(sa_mask, instruction);
+	unsigned branch = applyMask(branch_mask, instruction);
+	unsigned func = applyMask(func_mask, instruction);
+	unsigned rd = applyMask(rd_mask, instruction);
+	
 	switch(opcode)
 	{
 		case 0x08000000: //unsigned add ADDI
 		{
 			printf("ADDI ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}	
 		case 0x24000000: //ADDIU
 		{
 			printf("ADDIU ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x 0x%04x\n", rs, rt, immediate); 
 			break;
 		}	
-		case 0x0C000000: //ANDI
+		case 0x30000000: //ANDI
 		{
 			printf("ANDI ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}
 		case 0x34000000: //ORI
 		{
 			printf("ORI ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x, 0x%04x\n", rs, rt, immediate); 
 			break;
 		}
-		case 0x0E000000: //XORI
+		case 0x38000000: //XORI
 		{
 			printf("XORI ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x 0x%x\n", rs, rt, immediate);
 			break; 
 		}
 		case 0x0A000000: //STLI set on less than immediate
 		{
 			printf("STLI ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned imm_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(imm_mask, instruction);
 			printf("$%x $%x 0x%x\n", rs, rt, immediate); 
 			break;
 		}
 		case 0x8C000000: //Load Word - for now on is load/store instructions mostly
 		{
 			printf("LW ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
 		case 0x20000000: //Load Byte LB
 		{
 			printf("LB ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x, 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
 		case 0x21000000: //Load halfword
 		{
 			printf("LH ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
 		case 0x3C000000: //LUI Load Upper Immediate, was 0F
 		{
 			printf("LUI ");
-			unsigned rt_mask = createMask(16,20);
-			unsigned immediate_mask = createMask(0,15);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned immediate = applyMask(immediate_mask, instruction);
 			printf("$%x 0x%x\n", rt, immediate); 
 			break;
 		}
 		case 0xAC000000: //SW Store Word
 		{
 			printf("SW ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
 		case 0x28000000: //SB Store Byte CHECK FORMAT
 		{
 			printf("SB ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x $%x\n", rt, offset, base); 
 			break;
 		}
 		case 0x29000000: //SH Store Halfword CHECK FORMAT
 		{
 			printf("SH ");
-			unsigned base_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned base = applyMask(base_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x $%x)\n", rt, offset, base); 
 			break;
 		}
 		case 0x10000000: //BEQ Branch if equal - start of branching instructions
 		{
 			printf("BEQ ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x $%x 0x%04x\n", rs, rt, offset); 
 			break;
 		}
 		case 0x14000000: //BNE Branch on Not Equal
 		{
 			printf("BNE ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned rt_mask = createMask(16,20);
-			unsigned offset_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned rt = applyMask(rt_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x $%x 0x%04x\n", rs, rt, offset); 
 			break;
 		}
 		case 0x06000000: //BLEZ Brnach on Less than or equal to zero 
 		{
 			printf("BLEZ ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned offset_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x\n", rs, offset); 
 			break;
 		}
 		case 0x01000000: //special branch cases
-		{
-			unsigned branch_mask = createMask(16,20);
-			unsigned branch = applyMask(branch_mask, instruction);
-			
+		{		
 			switch(branch)
 			{
 				case 0x00: //BLTZ Brnach on Less than zero
 				{
 					printf("BLTZ ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned offset_mask = createMask(0,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned offset = applyMask(offset_mask, instruction);
 					printf("#%x 0x%x\n", rs, offset); 
 					break;
 				}
 				case 0x01: // BGEZ Branch on greater than or equal zero
 				{
 					printf("BGEZ ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned offset_mask = createMask(0,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned offset = applyMask(offset_mask, instruction);
 					printf("$%x 0x%x\n", rs, offset); 
 					break;
 				}
@@ -740,267 +806,155 @@ void print_instruction(uint32_t addr){
 		case 0x07000000: //BGTZ Branch on Greater than Zero
 		{
 			printf("BLEZ ");
-			unsigned rs_mask = createMask(21,25);
-			unsigned offset_mask = createMask(0,15);
-			unsigned rs = applyMask(rs_mask, instruction);
-			unsigned offset = applyMask(offset_mask, instruction);
 			printf("$%x 0x%x\n", rs, offset); 
 			break;
 		}
 		case 0x02000000: //Jump J (bum bum bummmm bum, RIP Eddie VanHalen)
 		{
 			printf("J ");
-			unsigned target_mask = createMask(0,26);
-			unsigned target = applyMask(target_mask, instruction);
-			printf("$%x\n", target);
+			printf("0x%x\n", (addr & 0xF0000000) | (target));
 			break;
 		}
 		case 0x03000000: //JAL Jump and Link
 		{
 			printf("JAL ");
-			unsigned target_mask = createMask(0,26);
-			unsigned target = applyMask(target_mask, instruction);
-			printf("$%x\n", target);
+			printf("0x%x\n", (addr & 0xF0000000) | (target));
 			break;
 		}
 		case 0x00000000: //special case when first six bits are 000000, function operations
 		{
-			unsigned func_mask = createMask(0,5);
-			unsigned func = applyMask(func_mask, instruction);
 			switch(func)
 			{
 				case 0x20: //ADD
 				{
 					printf("ADD ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x21: //ADDU
 				{
 					printf("ADDU ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x22: //SUB
 				{
 					printf("SUB ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x23: //SUBU
 				{
 					printf("SUBU ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x18: //MULT
 				{
 					printf("MULT ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
 					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x19: //MULTU
 				{
 					printf("MULTU ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
 					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x1A: //DIV
 				{
 					printf("DIV ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
 					printf("$%x $%x\n", rs, rt); 
 					break;
 				}
 				case 0x1B: //DIVU
 				{
 					printf("DIVU ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
 					printf("$%x $%x\n", rs, rt); 
 					break;	
 				}
 				case 0x24: //AND
 				{
 					printf("AND ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x25: //OR
 				{
 					printf("OR ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x26: //XOR
 				{
 					printf("XOR ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x27: //NOR
 				{
 					printf("NOR ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x2A: //SLT Set on less than
 				{
 					printf("SLT ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x $%x $%x\n", rd, rs, rt);
 					break;
 				}
 				case 0x00: //SLL Shift Left Logical NEED TO CHECK FORMAT
 				{
 					printf("SLL ");
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned sa_mask = createMask(6,10);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
-					unsigned sa = applyMask(sa_mask, instruction);
 					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				}
 				case 0x02: //SRL Shift Right Logical CHECK FORMAT
 				{
 					printf("SRL ");
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned sa_mask = createMask(6,10);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
-					unsigned sa = applyMask(sa_mask, instruction);
 					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				}
 				case 0x03: //SRA Shift Right Arithmetic
 				{
 					printf("SRA ");
-					unsigned rt_mask = createMask(16,20);
-					unsigned rd_mask = createMask(11,15);
-					unsigned sa_mask = createMask(6,10);
-					unsigned rt = applyMask(rt_mask, instruction);
-					unsigned rd = applyMask(rd_mask, instruction);
-					unsigned sa = applyMask(sa_mask, instruction);
 					printf("$%x $%x %x\n", rd, rt, sa); //different from the rest with the sa thingy
 					break;
 				} 
 				case 0x10: //MFHI Move from HI
 				{
 					printf("MFHI ");
-					unsigned rd_mask = createMask(11,15);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x\n", rd); //only the rd register
 					break;
 				}
 				case 0x12: //MFLO Move from LO
 				{
 					printf("MFHI ");
-					unsigned rd_mask = createMask(11,15);
-					unsigned rd = applyMask(rd_mask, instruction);
 					printf("$%x\n", rd); //only the rd register
 					break;
 				}
 				case 0x11: //MTHI Move to HI
 				{
 					printf("MFHI ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rs = applyMask(rs_mask, instruction);
 					printf("$%x\n", rs); //only the rs register
 					break;
 				}
 				case 0x13: //MTLO Move to LO
 				{
 					printf("MFHI ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rs = applyMask(rs_mask, instruction);
 					printf("$%x\n", rs); //only the rs register
 					break;
 				}
 				case 0x08: //JR Jump Register
 				{
 					printf("JR ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rs = applyMask(rs_mask, instruction);
 					printf("%x\n", rs); //only the rs register
 					break;
 				}
 				case 0x09: //JALR Jump and Link Register CHECK FORMAT
 				{
 					printf("JR ");
-					unsigned rs_mask = createMask(21,25);
-					unsigned rs = applyMask(rs_mask, instruction);
-					unsigned rd_mask = createMask(11,15);
-					unsigned rd = applyMask(rd_mask, instruction);
-					if(rd == 0x1F) //if rd is all one's then not given
+					if(rd == 0x1F) //if rd is all one's (or 31) then not given
 					{
 						printf("$%x\n", rs);
 					}
