@@ -327,9 +327,6 @@ void handle_instruction()
 	sa = (instruction & 0x000007C0) >> 6;
 	immediate = instruction & 0x0000FFFF;
 	target = instruction & 0x03FFFFFF;
-
-	
-	printf("opcode = %x\n", opcode);
 	
 	if(opcode == 0x00){
 		switch(function){
@@ -486,7 +483,7 @@ void handle_instruction()
 					print_instruction(CURRENT_STATE.PC);
 				}
 				break;
-			case 0x08: //J
+			case 0x02: //J
 				NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | (target << 2);
 				branch_jump = TRUE;
 				print_instruction(CURRENT_STATE.PC);
@@ -497,14 +494,14 @@ void handle_instruction()
 				branch_jump = TRUE;
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x10: //BEQ
+			case 0x04: //BEQ
 				if(CURRENT_STATE.REGS[rs] == CURRENT_STATE.REGS[rt]){
 					NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
 					branch_jump = TRUE;
 				}
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x14: //BNE
+			case 0x05: //BNE
 				if(CURRENT_STATE.REGS[rs] != CURRENT_STATE.REGS[rt]){
 					NEXT_STATE.PC = CURRENT_STATE.PC + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000)<<2 : (immediate & 0x0000FFFF)<<2);
 					branch_jump = TRUE;
@@ -525,11 +522,11 @@ void handle_instruction()
 				}
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x21: //ADDI
+			case 0x08: //ADDI
 				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x24: //ADDIU
+			case 0x09: //ADDIU
 				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
 				print_instruction(CURRENT_STATE.PC);
 				break;
@@ -541,19 +538,19 @@ void handle_instruction()
 				}
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x30: //ANDI
+			case 0x0C: //ANDI
 				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] & (immediate & 0x0000FFFF);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x34: //ORI
+			case 0x0D: //ORI
 				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] | (immediate & 0x0000FFFF);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x38: //XORI
+			case 0x0E: //XORI
 				NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] ^ (immediate & 0x0000FFFF);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x3C: //LUI
+			case 0x0F: //LUI
 				NEXT_STATE.REGS[rt] = immediate << 16;
 				print_instruction(CURRENT_STATE.PC);
 				break;
@@ -562,12 +559,12 @@ void handle_instruction()
 				NEXT_STATE.REGS[rt] = ((data & 0x000000FF) & 0x80) > 0 ? (data | 0xFFFFFF00) : (data & 0x000000FF);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x85: //LH
+			case 0x21: //LH
 				data = mem_read_32( CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF)) );
 				NEXT_STATE.REGS[rt] = ((data & 0x0000FFFF) & 0x8000) > 0 ? (data | 0xFFFF0000) : (data & 0x0000FFFF);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0x8C: //LW
+			case 0x23: //LW
 				NEXT_STATE.REGS[rt] = mem_read_32( CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF)) );
 				print_instruction(CURRENT_STATE.PC);
 				break;
@@ -585,7 +582,7 @@ void handle_instruction()
 				mem_write_32(addr, data);
 				print_instruction(CURRENT_STATE.PC);
 				break;
-			case 0xAC: //SW
+			case 0x2B: //SW
 				addr = CURRENT_STATE.REGS[rs] + ( (immediate & 0x8000) > 0 ? (immediate | 0xFFFF0000) : (immediate & 0x0000FFFF));
 				mem_write_32(addr, CURRENT_STATE.REGS[rt]);
 				print_instruction(CURRENT_STATE.PC);
