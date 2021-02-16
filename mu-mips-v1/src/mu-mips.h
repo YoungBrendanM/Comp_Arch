@@ -63,6 +63,7 @@ char prog_file[32];
 /* Function Declerations.                                                                                                */
 /***************************************************************/
 void help();
+uint32_t* translate_instruction(uint32_t instruction);
 uint32_t mem_read_32(uint32_t address);
 void mem_write_32(uint32_t address, uint32_t value);
 void cycle();
@@ -73,9 +74,11 @@ void rdump();
 void handle_command();
 void reset();
 void init_memory();
+unsigned createMask(unsigned a, unsigned b);
+unsigned applyMask(unsigned mask, uint32_t instruction);
 void load_program();
 void handle_instruction(); /*IMPLEMENT THIS*/
 void initialize();
 void print_program(); /*IMPLEMENT THIS*/
 void print_instruction(uint32_t);
-
+unsigned returnReg(unsigned rt);
