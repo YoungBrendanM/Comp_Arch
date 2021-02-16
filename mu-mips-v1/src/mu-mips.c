@@ -674,8 +674,8 @@ void print_instruction(uint32_t addr){
 
 	//applying masks to get parts of command	
 	unsigned opcode = applyMask(opcode_mask, instruction);
-	unsigned rs = applyMask(rs_mask, instruction);
-	unsigned rt = applyMask(rt_mask, instruction);
+	unsigned rs = applyMask(rs_mask, instruction)>>16;
+	unsigned rt = applyMask(rt_mask, instruction)>>16;
 	unsigned immediate = applyMask(imm_mask, instruction);
 	unsigned base = applyMask(base_mask, instruction);
 	unsigned offset = applyMask(offset_mask, instruction);
@@ -683,7 +683,7 @@ void print_instruction(uint32_t addr){
 	unsigned sa = applyMask(sa_mask, instruction);
 	unsigned branch = applyMask(branch_mask, instruction);
 	unsigned func = applyMask(func_mask, instruction);
-	unsigned rd = applyMask(rd_mask, instruction);
+	unsigned rd = applyMask(rd_mask, instruction)>>16;
 	
 	switch(opcode)
 	{
